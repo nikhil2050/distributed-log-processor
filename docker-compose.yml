@@ -1,0 +1,48 @@
+name: dlp-project
+
+# Define all containers that will run
+services:
+
+  # Service name (how you reference it internally)
+
+  # Zookeeper (required for Kafka)
+  zookeeper:
+    container_name: dlp-zookeeper
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  # Apache Kafka for event streaming
+  kafka:
+    container_name: dlp-kafka
+    image: confluentinc/cp-kafka:7.4.0          # Confluent's Kafka image (7.4.0 = version)
+    ports:
+      - "9092:9092"                             # Maps host port 9092 → container port 9092
+    environment:
+      KAFKA_BROKER_ID: 1                        # Unique ID for this Kafka broker
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181   # Connects to Zookeeper (service name)
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092  # How clients connect
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+  # Redis for caching and rate limiting
+  redis:
+    container_name: dlp-redis                   # Container name
+    image: redis:7-alpine                       # Official Redis image, Alpine Linux (lightweight)
+    ports:
+      - "6379:6379"                             # Standard Redis port
+
+  # PostgreSQL for data persistence
+  postgres:
+    container_name: dlp-postgres                # Container name
+    image: postgres:15-alpine                   # Official PostgreSQL image, Alpine Linux
+    environment:
+      POSTGRES_DB: logprocessor                 # Initial database name
+      POSTGRES_USER: loguser                    # Database user
+      POSTGRES_PASSWORD: logpassword            # Database password
+    ports:
+      - "5432:5432"                             # Standard PostgreSQL port

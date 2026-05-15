@@ -1,0 +1,53 @@
+server:
+  port: 8080
+
+LOG_PRODUCER_URL: http://localhost:8081
+LOG_CONSUMER_URL: http://localhost:8082
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: log-producer
+          uri: ${LOG_PRODUCER_URL:http://localhost:8081}
+          predicates:
+            - Path=/apigateway/producer/**
+          filters:
+            - RewritePath=/apigateway/producer/(?<segment>.*), /producer/${segment}
+        - id: consumer-health
+          uri: ${LOG_CONSUMER_URL:http://localhost:8082}
+          predicates:
+            - Path=/apigateway/consumer/**
+          filters:
+            - RewritePath=/apigateway/consumer/(?<segment>.*), /consumer/${segment}
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info,gateway
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Logging configuration
+logging:
+  level:
+    com.nikhil.logprocessor: DEBUG
+    org.springframework: DEBUG
+    org.springframework.cloud.gateway: TRACE
+    org.springframework.http.server.reactive: DEBUG
+    org.springframework.web.reactive: DEBUG
+    reactor.netty.http.client: DEBUG
+    reactor.netty.http.server: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
