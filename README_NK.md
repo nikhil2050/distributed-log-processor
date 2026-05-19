@@ -1,5 +1,5 @@
-### Github Link :
-https://github.com/sysdr/sdc-java/tree/main/day1/distributed-log-processor
+### Reference :
+[SubStack | SDCourse | Java Day 1: Building Production-Ready Distributed Log Processing Infrastructure](https://sdcourse.substack.com/p/day-1-building-production-ready-distributed?r=64ai7k)
 
 ## Infrastructure Setup with Docker 
 ### Docker Compose Commands
