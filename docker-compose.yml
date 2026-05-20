@@ -14,6 +14,11 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "2181" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Apache Kafka for event streaming
   kafka:
@@ -21,6 +26,9 @@ services:
     image: confluentinc/cp-kafka:7.4.0          # Confluent's Kafka image (7.4.0 = version)
     ports:
       - "9092:9092"                             # Maps host port 9092 → container port 9092
+    depends_on:
+      zookeeper:
+        condition: service_healthy          # ← waits for Zookeeper to pass healthcheck
     environment:
       KAFKA_BROKER_ID: 1                        # Unique ID for this Kafka broker
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181   # Connects to Zookeeper (service name)

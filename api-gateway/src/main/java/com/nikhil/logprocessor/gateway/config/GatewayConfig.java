@@ -9,10 +9,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class GatewayConfig {
     @Value("${LOG_PRODUCER_URL:http://localhost:8081}")
-    public static final String LOGPRODUCER_URL = "http://localhost:8081";
+    private String logProducerUrl;
 
     @Value("${LOG_CONSUMER_URL:http://localhost:8082}")
-    public static final String LOGCONSUMER_URL = "http://localhost:8082";
+    private String logConsumerUrl;
 
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
@@ -21,13 +21,13 @@ public class GatewayConfig {
                 // OUT: http://localhost:8081/logproducer/api/logs
                 .route("log-producer", r -> r.path("/apigateway/producer/**")
                         .filters(f -> f.rewritePath("/apigateway/producer/(?<segment>)", "/logproducer/${segment}"))
-                        .uri(LOGPRODUCER_URL))
+                        .uri(logProducerUrl))
 
                 // IN:  http://localhost:8080/apigateway/consumer/health
                 // OUT: http://localhost:8082/logconsumer/health
                 .route("log-consumer", r -> r.path("/apigateway/consumer/**")
                         .filters(f -> f.rewritePath("/apigateway/consumer/(?<segment>)", "/logconsumer/${segment}"))
-                        .uri(LOGCONSUMER_URL))
+                        .uri(logConsumerUrl))
                 .build();
     }
 
