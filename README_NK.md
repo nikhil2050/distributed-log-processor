@@ -1,6 +1,60 @@
 ### Reference :
 [SubStack | SDCourse | Java Day 1: Building Production-Ready Distributed Log Processing Infrastructure](https://sdcourse.substack.com/p/day-1-building-production-ready-distributed?r=64ai7k)
 
+## 🏗️ System Architecture
+
+### 1. The system consists of three main services:
+
+| Service          | Port | Desc                                                                    |
+|------------------|------|-------------------------------------------------------------------------|
+| **API Gateway**  | 8080 | Routes requests, handles rate limiting, and provides unified API access |
+| **Log Producer** | 8081 | REST API that accepts log events and publishes them to Kafka            |
+| **Log Consumer** | 8082 | Kafka consumer that processes events and stores them in PostgreSQL      |
+
+### 2. Infrastructure Components
+
+| Component         | Port | Desc                                                     |
+|-------------------|------|----------------------------------------------------------|
+| **Apache Kafka**  | 9092 | Message streaming platform for event-driven architecture |
+| **Redis**         | 6379 | Distributed caching and rate limiting                    |
+| **PostgreSQL**    | 5432 | Persistent storage for processed log events              |
+| **Prometheus**    | 9090 | Metrics collection and monitoring                        |
+| **Grafana**       | 3000 | Metrics visualization and dashboards                     |
+
+## Start Infrastructure
+
+```bash
+./setup.sh
+```
+Output:
+```shell
+🚀 Starting Distributed Log Processing System...
+📦 Starting infrastructure services...
+[+] Running 6/6
+ ✔ Container dlp-postgres    Running                                                                                                                                                                                                            0.0s 
+ ✔ Container dlp-prometheus  Running                                                                                                                                                                                                            0.0s 
+ ✔ Container dlp-zookeeper   Healthy                                                                                                                                                                                                            3.5s 
+ ✔ Container dlp-redis       Running                                                                                                                                                                                                            0.0s 
+ ✔ Container dlp-grafana     Running                                                                                                                                                                                                            0.0s 
+ ✔ Container dlp-kafka       Running                                                                                                                                                                                                            0.0s 
+⏳ Waiting for services to be ready...
+🔍 Checking Kafka connection...
+📝 Creating Kafka topics...
+🔍 Checking PostgreSQL connection...
+✅ Infrastructure is ready!
+🔗 Access points:
+  - API Gateway: http://localhost:8080
+  - Log Producer: http://localhost:8081
+  - Log Consumer: http://localhost:8082
+  - Prometheus: http://localhost:9090
+  - Grafana: http://localhost:3000 (admin/admin)
+🚀 Ready to start Spring Boot services!
+Run the following in separate terminals:
+  cd log-producer && mvn spring-boot:run
+  cd log-consumer && mvn spring-boot:run
+  cd api-gateway && mvn spring-boot:run
+```
+
 ## Infrastructure Setup with Docker 
 ### Docker Compose Commands
 
@@ -17,7 +71,6 @@ docker exec -it dlp-postgres psql -U loguser -d logprocessor
 \dt  -- List tables
 SELECT * FROM information_schema.tables;
 SELECT * FROM log_events;
-
 ```
 
 ## Access Kafka:
@@ -96,6 +149,23 @@ You should see:
 1. The producer receives the request and publishes to Kafka
 2. The consumer picks up the message and saves to PostgreSQL
 3. All services log what they’re doing
+
+### Integration Tests
+
+```bash
+./integration-tests/system-integration-test.sh
+```
+Tests include:
+- Service health verification
+- End-to-end log processing
+- Metrics endpoint availability
+
+### Prometheus and Grafana Dashboard:
+Add configuration to the `docker-compose.yml` to include Prometheus and Grafana:
+
+- **Prometheus**: http://localhost:9090
+- **Grafana Dashboard**: http://localhost:3000 (admin/admin)
+
 
 ### Load Testing Your System
 Create a script that sends many requests quickly:

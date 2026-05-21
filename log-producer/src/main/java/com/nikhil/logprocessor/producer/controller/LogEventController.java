@@ -2,6 +2,9 @@ package com.nikhil.logprocessor.producer.controller;
 
 import com.nikhil.logprocessor.producer.model.LogEvent;
 import com.nikhil.logprocessor.producer.service.KafkaProducerService;
+import io.micrometer.core.annotation.Timed;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +23,16 @@ public class LogEventController {
     @Autowired
     private KafkaProducerService kafkaProducerService;
 
+    private final Counter logCounter;
+
+    public LogEventController(MeterRegistry meterRegistry) {
+        this.logCounter = Counter.builder("log_events_received_total")  // Metric Update
+                .description("Total number of log events received")
+                .register(meterRegistry);
+    }
+
     @PostMapping
+    @Timed(value = "log_event_processing_time", description = "Time taken to process log event")
     public ResponseEntity<Map<String, String>> createLogEvent(@RequestBody LogEvent logEvent) {
         try {
             // Generate ID if not provided
@@ -29,6 +41,7 @@ public class LogEventController {
             }
 
             kafkaProducerService.sendLogEvent(logEvent);
+            logCounter.increment();                                             // Metric Update
 
             log.info("Log event created successfully: {}", logEvent.getId());
 

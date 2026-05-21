@@ -3,6 +3,8 @@ package com.nikhil.logprocessor.consumer.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nikhil.logprocessor.consumer.model.LogEvent;
 import com.nikhil.logprocessor.consumer.repository.LogEventRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
@@ -25,6 +27,18 @@ public class KafkaConsumerService {
     @Autowired
     private ObjectMapper objectMapper;
 
+    private final Counter processedCounter;
+    private final Counter errorCounter;
+
+    public KafkaConsumerService(MeterRegistry meterRegistry) {
+        this.processedCounter = Counter.builder("log_events_processed_total")
+                .description("Total number of log events processed")
+                .register(meterRegistry);
+        this.errorCounter = Counter.builder("log_events_errors_total")
+                .description("Total number of log event processing errors")
+                .register(meterRegistry);
+    }
+
     @KafkaListener(topics = "log-events", groupId = "log-consumer-group")
     public void consume(
             @Payload String message,
@@ -39,11 +53,13 @@ public class KafkaConsumerService {
             processLogEvent(logEvent);
 
             acknowledgment.acknowledge();
+            processedCounter.increment();
 
             log.debug("Successfully processed log event: {}", logEvent.getId());
 
         } catch (Exception e) {
             log.error("Failed to process message: {}", message, e);
+            errorCounter.increment();
             throw new RuntimeException("Failed to process log event", e);
         }
     }

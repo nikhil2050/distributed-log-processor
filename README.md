@@ -9,17 +9,21 @@ A production-ready distributed log processing system built with Spring Boot, Apa
 
 The system consists of three main services:
 
-- **API Gateway** (Port 8080): Routes requests, handles rate limiting, and provides unified API access
-- **Log Producer** (Port 8081): REST API that accepts log events and publishes them to Kafka
-- **Log Consumer** (Port 8082): Kafka consumer that processes events and stores them in PostgreSQL
+| Service          | Port | Desc                                                                    |
+|------------------|------|-------------------------------------------------------------------------|
+| **API Gateway**  | 8080 | Routes requests, handles rate limiting, and provides unified API access |
+| **Log Producer** | 8081 | REST API that accepts log events and publishes them to Kafka            |
+| **Log Consumer** | 8082 | Kafka consumer that processes events and stores them in PostgreSQL      |
 
 ### Infrastructure Components
 
-- **Apache Kafka**: Message streaming platform for event-driven architecture
-- **Redis**: Distributed caching and rate limiting
-- **PostgreSQL**: Persistent storage for processed log events
-- **Prometheus**: Metrics collection and monitoring
-- **Grafana**: Metrics visualization and dashboards
+| Component         | Port | Desc                                                     |
+|-------------------|------|----------------------------------------------------------|
+| **Apache Kafka**  | 9092 | Message streaming platform for event-driven architecture |
+| **Redis**         | 6379 | Distributed caching and rate limiting                    |
+| **PostgreSQL**    | 5432 | Persistent storage for processed log events              |
+| **Prometheus**    | 9090 | Metrics collection and monitoring                        |
+| **Grafana**       | 3000 | Metrics visualization and dashboards                     |
 
 ## 🚀 Quick Start
 
