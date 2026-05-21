@@ -16,7 +16,7 @@ echo "📊 Generating test log events..."
 
 # Simple load test using curl
 for i in {1..100}; do
-  curl -X POST http://localhost:8080/api/logs \
+  curl -X POST http://localhost:8080/apigateway/producer/api/logs \
     -H "Content-Type: application/json" \
     -d "{
       \"organizationId\": \"org-set3-$((i % 5))\",
@@ -24,11 +24,12 @@ for i in {1..100}; do
       \"message\": \"Test log message $i\",
       \"source\": \"load-test\"
     }" &
-  
+
+  echo -e "\n"
   # Limit concurrent requests
   if (( i % 10 == 0 )); then
     wait
-    echo -e "\n\nSent $i requests...\n"
+    echo -e "\nSent $i requests...\n"
   fi
 done
 

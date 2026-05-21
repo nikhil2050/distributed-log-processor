@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
 import java.util.Map;
 
@@ -34,6 +35,7 @@ public class LogEventController {
 
     @PostMapping
     @Timed(value = "log_event_processing_time", description = "Time taken to process log event")
+    @CircuitBreaker(name = "kafka-producer", fallbackMethod = "fallbackLogEvent")
     public ResponseEntity<Map<String, String>> createLogEvent(@RequestBody LogEvent logEvent) {
         try {
             // Generate ID if not provided
@@ -57,6 +59,15 @@ public class LogEventController {
             return ResponseEntity.internalServerError()
                     .body(Map.of("status", "error", "message", "Failed to process log event"));
         }
+    }
+
+    public ResponseEntity<Map<String, String>> fallbackLogEvent(LogEvent logEvent, Exception ex) {
+        log.warn("Circuit breaker activated for log event: {}", logEvent.getId(), ex);
+        return ResponseEntity.status(503)
+                .body(Map.of(
+                        "status", "service_unavailable",
+                        "message", "Log processing temporarily unavailable"
+                ));
     }
 
     @GetMapping("/health")

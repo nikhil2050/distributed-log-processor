@@ -16,6 +16,9 @@
 
     <spring.boot.version>2.7.18</spring.boot.version>
     <!--    <spring.boot.version>3.2.0</spring.boot.version>-->
+
+    <resilience4jVersion>2.4.0</resilience4jVersion>
+
   </properties>
 
   <parent>
@@ -65,6 +68,22 @@
       <artifactId>micrometer-registry-prometheus</artifactId>
     </dependency>
 
+    <!-- For @Retryable, @CircuitBreaker  -->
+    <dependency>
+      <groupId>io.github.resilience4j</groupId>
+      <artifactId>resilience4j-annotations</artifactId>
+      <version>${resilience4jVersion}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.resilience4j</groupId>
+      <artifactId>resilience4j-retry</artifactId>
+      <version>${resilience4jVersion}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.resilience4j</groupId>
+      <artifactId>resilience4j-circuitbreaker</artifactId>
+      <version>${resilience4jVersion}</version>
+    </dependency>
   </dependencies>
 
   <build>

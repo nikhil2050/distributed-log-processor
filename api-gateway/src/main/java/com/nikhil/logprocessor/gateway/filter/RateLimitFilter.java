@@ -1,5 +1,6 @@
 package com.nikhil.logprocessor.gateway.filter;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
@@ -17,6 +18,7 @@ import java.time.Duration;
  * Uses Redis to track counts across multiple server instances
  */
 @Component
+@Slf4j
 public class RateLimitFilter extends AbstractGatewayFilterFactory<RateLimitFilter.Config> {
 
     @Autowired
@@ -62,6 +64,7 @@ public class RateLimitFilter extends AbstractGatewayFilterFactory<RateLimitFilte
      */
     @Override
     public GatewayFilter apply(Config config) {
+        log.info("RateLimitFilter.apply() called with config - limit: {}, window: {}", config.getLimit(), config.getWindow());
 
         /**
          * Lambda that processes each request
@@ -72,37 +75,53 @@ public class RateLimitFilter extends AbstractGatewayFilterFactory<RateLimitFilte
             String clientId = getClientId(exchange);
             String key = "rate_limit:" + clientId;      // e.g. "rate_limit:192.168.1.1"
 
+            log.debug("RateLimitFilter: Processing request from clientId: {}, key: {}", clientId, key);
+
             // Fetch request count from Redis (non-blocking)
             ReactiveValueOperations<String, String> ops = redisTemplate.opsForValue();
             return ops.get(key)
+                    .doOnNext(value -> log.debug("RateLimitFilter: Retrieved current count from Redis: {}", value))
                     .cast(String.class)
                     .defaultIfEmpty("0")      // If no count exists, start at 0
+                    .doOnNext(count -> log.debug("RateLimitFilter: Current count (or 0): {}", count))
                     .flatMap(currentCount -> {  // Check if Limit Exceeded
                         int count = Integer.parseInt(currentCount);
 
+                        log.debug("RateLimitFilter: Parsed count: {}", count);
+
                         // If count ≥ limit (100): Return HTTP 429 (Too Many Requests)
                         if (count >= config.getLimit()) {
+                            log.warn("RateLimitFilter: Rate limit exceeded for clientId: {}. Count: {}, Limit: {}", 
+                                    clientId, count, config.getLimit());
                             exchange.getResponse().setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
 
                             // End the request, don't proceed to next filter
                             return exchange.getResponse().setComplete();
                         }
 
+                        log.debug("RateLimitFilter: Incrementing counter for clientId: {}", clientId);
+
                         // Increase count by 1 in Redis
                         return ops.increment(key)
+                                .doOnNext(newCount -> log.debug("RateLimitFilter: New count after increment: {}", newCount))
                                 .flatMap(newCount -> {  // The new count value after increment
 
                                     // Set Expiry on First Request
                                     if (newCount == 1) {
+                                        log.info("RateLimitFilter: First request from clientId: {}. Setting expiry to {} seconds", 
+                                                clientId, config.getWindow());
 
                                         // If 1st request, set Redis key to expire after window seconds (60 sec)
                                         // This resets the counter automatically
                                         return redisTemplate.expire(key, Duration.ofSeconds(config.getWindow()))
+                                                .doOnNext(result -> log.debug("RateLimitFilter: Expire set result: {}", result))
                                                 .then(chain.filter(exchange));  // Pass request to next filter
                                     }
+                                    log.debug("RateLimitFilter: Allowing request. Count: {}/{}", newCount, config.getLimit());
                                     return chain.filter(exchange);
                                 });
-                    });
+                    })
+                    .doOnError(error -> log.error("RateLimitFilter: Error processing rate limit", error));
         };
     }
 
@@ -113,7 +132,9 @@ public class RateLimitFilter extends AbstractGatewayFilterFactory<RateLimitFilte
      */
     private String getClientId(ServerWebExchange exchange) {
         // Simple client identification - in production use proper authentication
-        return exchange.getRequest().getRemoteAddress().getAddress().getHostAddress();
+        String clientIp = exchange.getRequest().getRemoteAddress().getAddress().getHostAddress();
+        log.debug("RateLimitFilter: Client IP extracted: {}", clientIp);
+        return clientIp;
     }
 
     public static class Config {

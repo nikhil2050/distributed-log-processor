@@ -37,6 +37,15 @@ spring:
       port: 6379
       timeout: 2000ms
 
+# Circuit breaker configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      database:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        sliding-window-size: 10
+
 # Actuator endpoints
 management:
   endpoints:
@@ -55,6 +64,8 @@ management:
 logging:
   level:
     com.nikhil.logprocessor: DEBUG
+    org.springframework: WARN
+    org.springframework.cloud.gateway: ERROR
     org.springframework.kafka: INFO
     org.hibernate.SQL: INFO
   pattern:

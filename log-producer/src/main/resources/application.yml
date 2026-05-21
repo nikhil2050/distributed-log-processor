@@ -21,6 +21,16 @@ app:
     topic:
       log-events: log-events
 
+## Circuit breaker configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      kafka-producer:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+
 # Actuator endpoints
 management:
   endpoints:
@@ -39,6 +49,8 @@ management:
 logging:
   level:
     com.example.logprocessor: DEBUG
+    org.springframework: WARN
+    org.springframework.cloud.gateway: ERROR
     org.springframework.kafka: INFO
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

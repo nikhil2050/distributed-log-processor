@@ -2,30 +2,29 @@ package com.nikhil.logprocessor.consumer.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nikhil.logprocessor.consumer.model.LogEvent;
-import com.nikhil.logprocessor.consumer.repository.LogEventRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
 
 @Service
 @Slf4j
 public class KafkaConsumerService {
 
     @Autowired
-    private LogEventRepository logEventRepository;
+    private ObjectMapper objectMapper;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private LogEventService logEventService;
 
     private final Counter processedCounter;
     private final Counter errorCounter;
@@ -40,6 +39,12 @@ public class KafkaConsumerService {
     }
 
     @KafkaListener(topics = "log-events", groupId = "log-consumer-group")
+    @RetryableTopic(
+            attempts = "3",
+            backoff = @Backoff(delay = 1000, multiplier = 2.0),
+            autoCreateTopics = "true",
+            topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE
+    )
     public void consume(
             @Payload String message,
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
@@ -50,7 +55,10 @@ public class KafkaConsumerService {
             log.debug("Received message from topic: {}, partition: {}", topic, partition);
 
             LogEvent logEvent = objectMapper.readValue(message, LogEvent.class);
-            processLogEvent(logEvent);
+            
+            // Call the processing service - has @Retryable annotation
+            // Automatically retries on database exceptions
+            logEventService.processLogEvent(logEvent);
 
             acknowledgment.acknowledge();
             processedCounter.increment();
@@ -58,39 +66,9 @@ public class KafkaConsumerService {
             log.debug("Successfully processed log event: {}", logEvent.getId());
 
         } catch (Exception e) {
-            log.error("Failed to process message: {}", message, e);
+            log.error("Failed to process message after all retries: {}", message, e);
             errorCounter.increment();
             throw new RuntimeException("Failed to process log event", e);
         }
-    }
-
-    public void processLogEvent(LogEvent logEvent) {
-        try {
-            // Set processing timestamp
-            logEvent.setProcessedAt(LocalDateTime.now());
-
-            // Save to database
-            logEventRepository.save(logEvent);
-
-            // Additional processing based on log level
-            if ("ERROR".equals(logEvent.getLevel())) {
-                handleErrorLog(logEvent);
-            }
-
-            log.info("Processed log event: {} for organization: {}",
-                    logEvent.getId(), logEvent.getOrganizationId());
-
-        } catch (DataAccessException e) {
-            log.error("Database error processing log event: {}", logEvent.getId(), e);
-            throw e;
-        }
-    }
-
-    private void handleErrorLog(LogEvent logEvent) {
-        // Additional error log processing (e.g., alerting, metrics)
-        log.warn("Error log detected: {} from {}", logEvent.getMessage(), logEvent.getSource());
-
-        // Could trigger alerts, update error counters, etc.
-        // For now, just log the error
     }
 }
