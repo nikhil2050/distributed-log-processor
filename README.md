@@ -5,6 +5,8 @@
 
 A production-ready distributed log processing system built with Spring Boot, Apache Kafka, Redis, and PostgreSQL. This system demonstrates key distributed system patterns including event-driven architecture, circuit breakers, distributed caching, and comprehensive observability.
 
+![System Architecture Diagram](./DLP_SystemArchitecture.jpg?raw=true "System Architecture Diagram")
+
 ## 1.System Architecture 🏗
 
 The system consists of three main services:
